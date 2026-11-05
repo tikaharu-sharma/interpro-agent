@@ -1,6 +1,9 @@
 
-from fastapi import FastAPI
+import logging
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 
@@ -35,10 +38,22 @@ def chat(request: ChatRequest):
         "entities": []
     }
 
-    result = graph.invoke(
-        initial_state,
-        config={"recursion_limit": 40}
-    )
+    try:
+        result = graph.invoke(
+            initial_state,
+            config={"recursion_limit": 40}
+        )
+    except GraphRecursionError:
+        raise HTTPException(
+            status_code=422,
+            detail="This question needed too many steps. Try a more specific question."
+        )
+    except Exception:
+        logging.exception("agent failed")
+        raise HTTPException(
+            status_code=500,
+            detail="The agent hit an error. Please try again."
+        )
 
     final_message = result["messages"][-1]
 
@@ -53,5 +68,5 @@ def chat(request: ChatRequest):
         "proteins": result.get("proteins", []),
         "go_terms": result.get("go_terms", []),
         "entities": result.get("entities", []),
-        "blast_result": result.get("blast_result", [])
+        "ortholog_results": result.get("ortholog_results", [])
     }
