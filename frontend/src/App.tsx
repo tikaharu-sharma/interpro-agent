@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { askQuestion } from "./api";
 import type { Message } from "./types";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import MessageList from "./components/MessageList";
+import Composer from "./components/Composer";
 
 function App() {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
     const [threadId] = useState(() => crypto.randomUUID());
 
@@ -27,22 +26,13 @@ function App() {
     }
 
     return (
-        <div>
-            {messages.map((m) => (
-                <div key={m.id}>
-                  <b>{m.role}:</b>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
-                </div>))}
-            {loading && <p>Thinking…</p>}
-            <form onSubmit={(e) => {
-                e.preventDefault();
-                if (!input.trim() || loading) return;
-                handleSend(input.trim());
-                setInput("");
-            }}>
-                <input value={input} onChange={(e) => setInput(e.target.value)} />
-                <button disabled={loading}>Send</button>
-            </form>
+        <div className="app">
+            <header className="header">
+                <h1>InterPro Agent</h1>
+                <p>Ask about plant proteins, GO terms and InterPro entries. Each question is answered independently.</p>
+            </header>
+            <MessageList messages={messages} loading={loading} />
+            <Composer onSend={handleSend} disabled={loading} />
         </div>
     );
 }
