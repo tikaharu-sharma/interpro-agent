@@ -1390,7 +1390,7 @@ def agent_node(state: GraphState):
 def build_graph():
     builder = StateGraph(GraphState)
     builder.add_node("agent", agent_node)
-    builder.add_node("tools", ToolNode(tools))
+    builder.add_node("tools", ToolNode(tools, handle_tool_errors=True))
     builder.add_edge(START, "agent") 
     builder.add_conditional_edges("agent", tools_condition,{"tools": "tools", "__end__": END})
     builder.add_edge("tools", "agent")
