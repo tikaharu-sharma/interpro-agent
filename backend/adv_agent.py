@@ -863,7 +863,8 @@ def _run_local_blast(query_fasta, db_prefix, limit=10):
             "-query", str(query_fasta),
             "-db", str(db_prefix),
             "-outfmt",
-            "6 qseqid sseqid pident length qlen slen evalue bitscore",
+            "6 qseqid sseqid pident length qlen slen evalue bitscore qstart qend sstart send",
+            "-max_hsps", "1",
             "-max_target_seqs", str(limit),
             "-evalue", "10",
             "-num_threads", "2",
@@ -879,26 +880,27 @@ def _run_local_blast(query_fasta, db_prefix, limit=10):
     for line in result.stdout.splitlines():
         fields = line.split("\t")
 
-        if len(fields) != 8:
+        if len(fields) != 12:
             continue
 
         query_id, subject_id = fields[0], fields[1]
         identity = float(fields[2])
-        alignment_length = int(fields[3])
         query_length = int(fields[4])
         subject_length = int(fields[5])
         evalue = float(fields[6])
         bitscore = float(fields[7])
+        query_span = int(fields[9]) - int(fields[8]) + 1
+        subject_span = int(fields[11]) - int(fields[10]) + 1
 
         hits.append({
             "query_accession": query_id,
             "accession": subject_id,
             "identity_percent": round(identity, 2),
             "query_coverage_percent": round(
-                100 * alignment_length / query_length, 2
+                100 * query_span / query_length, 2
             ) if query_length else 0.0,
             "subject_coverage_percent": round(
-                100 * alignment_length / subject_length, 2
+                100 * subject_span / subject_length, 2
             ) if subject_length else 0.0,
             "evalue": evalue,
             "bit_score": bitscore,
@@ -1068,6 +1070,8 @@ def analyze_orthologs(
             acc for acc, seq in source_rows
         }
 
+        forward_best = forward_hits[0]["accession"] if forward_hits else None
+
         results = []
 
         # Reverse search each candidate against the source proteome.
@@ -1095,7 +1099,8 @@ def analyze_orthologs(
             )
 
             reciprocal_best_hit = (
-                reverse_best is not None
+                candidate_accession == forward_best
+                and reverse_best is not None
                 and reverse_best["accession"] == accession
             )
 
@@ -1236,15 +1241,27 @@ TOOL SELECTION RULES
     Use get_proteins_for_entity.
 
 11. Ortholog analysis across organisms:
-    - Use analyze_orthologs when the user asks to find
-      orthologs or corresponding proteins in another organism.
-    - Use the exact source protein accession.
-    - Obtain the target organism's verified taxon ID from
-      the database; never guess it.
-    - Report sequence identity, query coverage, E-value,
-      reciprocal-best-hit status, and accession.
-    - Distinguish RBH candidates from confirmed orthology.
+    - Use analyze_orthologs when the user asks for orthologs
+      or corresponding proteins in another organism.
+    - Also use it when the user asks for a named gene in an
+      organism where search_proteins with that taxon_id finds
+      no protein with that gene name. A gene known from one
+      organism, requested in another, is an ortholog question.
+    - Workflow: first search_proteins for the gene in the
+      target organism. If no protein has that gene name, search
+      without taxon_id, pick the protein whose gene field
+      matches exactly, and call analyze_orthologs with its
+      accession and the target taxon ID.
+    - Never pick a counterpart from a protein name, family,
+      domain, or GO term. Only BLAST results can support it.
+    - If analyze_orthologs cannot run, say so. Do not
+      substitute another protein.
+    - Report these statistics only for the top candidate, copied
+      exactly from the tool result. The interface shows the full
+      results table, so do not list or summarize other candidates.
+    - Present results as candidates, not confirmed orthologs.
     - This tool uses local BLAST+ and local database sequences.
+
 
 MULTI-STEP WORKFLOW RULES
 

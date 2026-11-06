@@ -73,3 +73,11 @@ body { margin: 0; }
   color: var(--accent-text); background: var(--accent); border: 0; border-radius: 10px;
 }
 .composer button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.evidence { margin-top: 12px; }
+.evidence summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.msg a { color: var(--accent); }
+
+.caveat { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+
+
