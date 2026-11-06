@@ -453,26 +453,23 @@ def search_go_terms(query: str, runtime: ToolRuntime, limit: int = 10, similarit
 
     with Session(engine) as session:
 
-        text_matches = (
-            session.query(GoTerms).filter(GoTerms.name.ilike(f"%{query}%")).order_by(GoTerms.id).limit(limit).all())
-
         cosine_distance = GoTerms.embedding.cosine_distance(query_embedding)
 
-        semantic_matches = (session.query(GoTerms).filter(GoTerms.embedding.isnot(None))
-            .filter(cosine_distance <= 1 - similarity_threshold).order_by(cosine_distance).limit(limit).all())
-
-        combined = {}
-
-        for go_term in text_matches:
-            combined[go_term.id] = go_term
-
-        for go_term in semantic_matches:
-            if go_term.id not in combined:
-                combined[go_term.id] = go_term
+        go_terms = (
+            session.query(GoTerms)
+            .filter(GoTerms.embedding.isnot(None))
+            .filter(or_(
+                GoTerms.name.ilike(f"%{query}%"),
+                cosine_distance <= 1 - similarity_threshold
+            ))
+            .order_by(cosine_distance)
+            .limit(limit)
+            .all()  
+        )
 
         go_term_data = [
             serialize_go_term(go_term)
-            for go_term in list(combined.values())[:limit]
+            for go_term in go_terms
         ]
 
     return Command(
