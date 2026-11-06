@@ -312,7 +312,7 @@ def get_protein(accession: str, runtime: ToolRuntime) -> Command:
     )
 
 @tool
-def search_proteins(query: str, runtime: ToolRuntime, limit: int = 20) -> Command:
+def search_proteins(query: str, runtime: ToolRuntime, limit: int = 20, taxon_id: str | None = None) -> Command:
     """
     Search proteins using their gene name, protein name, or description.
 
@@ -325,6 +325,7 @@ def search_proteins(query: str, runtime: ToolRuntime, limit: int = 20) -> Comman
     Args:
         query: Search keyword or phrase.
         limit: Maximum number of proteins to return.
+        taxon_id: Optional NCBI taxon ID to restrict results to one organism: "3702" for Arabidopsis thaliana, "2711" for Citrus sinensis. Always set this when the user names an organism.
     """
 
     if not query.strip():
@@ -340,6 +341,8 @@ def search_proteins(query: str, runtime: ToolRuntime, limit: int = 20) -> Comman
                 Protein.description.ilike(f"%{query}%")
             )
         )
+        if taxon_id:
+            protein_query = protein_query.filter(Protein.taxon_id == taxon_id)
 
         if protein_query is None:
             return Command(
@@ -542,7 +545,7 @@ def get_go_terms_for_protein(accession: str, runtime: ToolRuntime) -> Command:
     )
 
 @tool
-def get_proteins_for_go_term(go_id: str, runtime: ToolRuntime, limit: int = 50) -> Command:
+def get_proteins_for_go_term(go_id: str, runtime: ToolRuntime, limit: int = 50, taxon_id: str | None = None) -> Command:
     """
     Retrieve proteins directly associated with a GO term.
 
@@ -556,6 +559,8 @@ def get_proteins_for_go_term(go_id: str, runtime: ToolRuntime, limit: int = 50) 
     Args:
         go_id: Unique GO identifier, such as GO:0004672.
         limit: Maximum number of proteins to retrieve (1-100).
+        taxon_id: Optional NCBI taxon ID to restrict results to one organism: "3702" for Arabidopsis thaliana, "2711" for
+                   Citrus sinensis. Always set this when the user names an organism.
 
     Stores the retrieved proteins in GraphState.proteins.
     """
@@ -579,6 +584,8 @@ def get_proteins_for_go_term(go_id: str, runtime: ToolRuntime, limit: int = 50) 
             )
 
         protein_query = session.query(Protein).filter(Protein.go_terms.any(GoTerms.id == go_id))
+        if taxon_id:
+            protein_query = protein_query.filter(Protein.taxon_id == taxon_id)
         proteins = protein_query.order_by(Protein.accession).limit(limit).all()
         protein_data = [serialize_protein(protein) for protein in proteins]
 
@@ -744,7 +751,7 @@ def get_entities_for_protein(accession: str, runtime: ToolRuntime) -> Command:
 
 
 @tool
-def get_proteins_for_entity(entity_accession: str, runtime: ToolRuntime, limit: int = 50) -> Command:
+def get_proteins_for_entity(entity_accession: str, runtime: ToolRuntime, limit: int = 50, taxon_id: str | None = None) -> Command:
     """
     Retrieve proteins directly associated with a specific
     biological entity.
@@ -761,6 +768,7 @@ def get_proteins_for_entity(entity_accession: str, runtime: ToolRuntime, limit: 
     Args:
         entity_accession: Unique accession of the entity.
         limit: Maximum number of proteins to retrieve (1-100).
+        taxon_id: Optional NCBI taxon ID to restrict results to one organism: "3702" for Arabidopsis thaliana, "2711" for Citrus sinensis. Always set this when the user names an organism.
 
     Stores retrieved proteins in GraphState.proteins.
     """
@@ -786,6 +794,8 @@ def get_proteins_for_entity(entity_accession: str, runtime: ToolRuntime, limit: 
             )
 
         protein_query = session.query(Protein).filter(Protein.entities.any(Entity.accession == entity_accession))
+        if taxon_id:
+            protein_query = protein_query.filter(Protein.taxon_id == taxon_id)
         proteins = protein_query.order_by(Protein.accession).limit(limit).all()
         protein_data = [serialize_protein(protein) for protein in proteins]
 
@@ -1253,11 +1263,13 @@ MULTI-STEP WORKFLOW RULES
 - Do not stop until the requested information has
   been retrieved, or a limitation prevents completion.
 - Do not claim that a partial result is exhaustive.
-- If the user specifies an organism, filter results
-  by the protein's taxon_id before answering.
-- For Citrus sinensis, taxon_id is 2711.
-- Other organism names require verified taxonomy
-  identifiers; do not guess them.
+- If the user names an organism, pass its taxon_id to
+  the protein retrieval tools so filtering happens in
+  the database, not afterwards.
+- Taxon IDs: Arabidopsis thaliana = 3702, Citrus sinensis = 2711.
+- The database contains only these two organisms. For any
+  other organism, say so instead of guessing an ID.
+
 
 STATE RULES
 
