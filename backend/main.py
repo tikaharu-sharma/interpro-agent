@@ -17,7 +17,10 @@ def run_research_query(query: str):
 
     result = graph.invoke(
         initial_state,
-        config={"recursion_limit": 40}
+        config={
+            "recursion_limit": 40,
+            "configurable": {"thread_id": "cli-test"}
+            }
     )
 
     print("\n========== TOOL EXECUTION ==========\n")

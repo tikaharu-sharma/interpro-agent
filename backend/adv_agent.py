@@ -19,6 +19,7 @@ from langgraph.prebuilt import ToolRuntime
 from langgraph.types import Command
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import InMemorySaver
 from typing_extensions import NotRequired
 import tempfile
 import shutil
@@ -120,7 +121,9 @@ protein_to_entity_map = Table(
 
 
 def merge_by_key(key: str):
-    def merge(existing: list, incoming: list) -> list:
+    def merge(existing: list, incoming: list | None) -> list:
+        if incoming is None:
+            return []
         merged = {item[key]: item for item in existing}
 
         for item in incoming:
@@ -1411,6 +1414,6 @@ def build_graph():
     builder.add_edge(START, "agent") 
     builder.add_conditional_edges("agent", tools_condition,{"tools": "tools", "__end__": END})
     builder.add_edge("tools", "agent")
-    return builder.compile()
+    return builder.compile(checkpointer=InMemorySaver())
 
 graph = build_graph()

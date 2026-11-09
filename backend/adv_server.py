@@ -23,25 +23,30 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     query: str
+    thread_id: str
 
 
 @app.post("/chat")
 def chat(request: ChatRequest):
 
-    initial_state = {
-        "query": request.query,
-        "messages": [
-            HumanMessage(content=request.query)
-        ],
-        "proteins": [],
-        "go_terms": [],
-        "entities": []
+    turn_input = {
+    "query": request.query,
+    "messages": [HumanMessage(content=request.query)],
+    "proteins": None,
+    "go_terms": None,
+    "entities": None,
+    "query_protein": None,
+    "ortholog_results": [],
     }
+
 
     try:
         result = graph.invoke(
-            initial_state,
-            config={"recursion_limit": 40}
+            turn_input,
+            config={
+                "recursion_limit": 40,
+                "configurable": {"thread_id": request.thread_id},
+                },
         )
     except GraphRecursionError:
         raise HTTPException(
