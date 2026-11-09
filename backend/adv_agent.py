@@ -148,7 +148,8 @@ class ProteinState(TypedDict):
     proteome: str
     gene: str
     go_terms: list[str]
-    entities: list[str] 
+    go_term_names: dict[str, str]
+    entities: list[str]
 
 class ProteinSummaryState(TypedDict):
     accession: str
@@ -228,6 +229,9 @@ def serialize_protein(protein: Protein) -> ProteinState:
         "go_terms": [
             go_term.id for go_term in protein.go_terms
         ],
+        "go_term_names": {
+            go_term.id: go_term.name for go_term in protein.go_terms
+        },
         "entities": [
             entity.accession for entity in protein.entities
         ]
@@ -1304,6 +1308,8 @@ The state may contain results from multiple tools.
 ANSWER RULES
 
 - Base conclusions on retrieved data.
+- State a GO term's name only if it appears in the state
+  or a tool result. If you only have the GO ID, give the ID alone.
 - Distinguish GO annotations from entity associations.
 - Include relevant protein accessions and GO IDs.
 - Clearly state when results are incomplete.
@@ -1345,7 +1351,7 @@ def build_state_context(state: GraphState) -> str:
                 "name": protein["name"],
                 "description": protein["description"],
                 "gene": protein["gene"],
-                "go_terms": protein["go_terms"],
+                "go_terms": protein["go_term_names"],
                 "entities": protein["entities"]
             }
             for protein in proteins[:100]

@@ -11,6 +11,7 @@ export interface Protein {
     proteome: string;
     gene: string;
     go_terms: string[];
+    go_term_names: Record<string, string>; // GO ID -> name
     entities: string[];
 }
 
