@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage
@@ -128,3 +129,10 @@ def chat(request: ChatRequest):
         "entities": result.get("entities", []),
         "ortholog_results": result.get("ortholog_results", []),
     }
+
+
+# Serve the built frontend (frontend/dist) from the same origin, so the app calls /chat on this server.
+# Mounted last: routes defined above (like /chat) take precedence over this catch-all.
+FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
