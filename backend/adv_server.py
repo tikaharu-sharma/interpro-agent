@@ -104,13 +104,14 @@ def chat(request: ChatRequest):
         )
 
     answer = result["messages"][-1].content
+    tool_calls = tool_calls_this_turn(result["messages"])
     if not isinstance(answer, str):
         answer = str(answer)
 
     log_turn({
         **record,
         "answer": answer,
-        "tool_calls": tool_calls_this_turn(result["messages"]),
+        "tool_calls": tool_calls,
         "counts": {
             "proteins": len(result.get("proteins") or []),
             "go_terms": len(result.get("go_terms") or []),
@@ -128,6 +129,7 @@ def chat(request: ChatRequest):
         "go_terms": result.get("go_terms", []),
         "entities": result.get("entities", []),
         "ortholog_results": result.get("ortholog_results", []),
+        "tool_calls": tool_calls,
     }
 
 

@@ -77,6 +77,11 @@ export interface OrthologSummary {
     caveat: string;
 }
 
+export interface ToolCall {
+    name: string;
+    args: Record<string, unknown>;
+}
+
 export interface ChatResponse {
     answer: string;
     query_protein: Protein | null;
@@ -84,6 +89,7 @@ export interface ChatResponse {
     go_terms: GoTerm[];
     entities: Entity[];
     ortholog_results: OrthologSummary[];
+    tool_calls: ToolCall[];
 }
 
 export interface ApiError {
